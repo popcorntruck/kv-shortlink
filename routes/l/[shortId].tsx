@@ -1,4 +1,4 @@
-import { HandlerContext } from "$fresh/server.ts";
+import { HandlerContext, Handlers } from "$fresh/server.ts";
 
 // Jokes courtesy of https://punsandoneliners.com/randomness/programmer-jokes/
 const JOKES = [
@@ -14,8 +14,26 @@ const JOKES = [
   "An SEO expert walked into a bar, pub, inn, tavern, hostelry, public house.",
 ];
 
-export const handler = (_req: Request, _ctx: HandlerContext): Response => {
-  const randomIndex = Math.floor(Math.random() * JOKES.length);
-  const body = JOKES[randomIndex];
-  return new Response(body);
+export const handler: Handlers = {
+  async GET(_req: Request, ctx: HandlerContext) {
+    const shortId = ctx.params["shortId"];
+
+    if (!shortId || typeof shortId !== "string") {
+      return new Response("you must add id", { status: 404 });
+    }
+
+    const kv = await Deno.openKv();
+    const data = await kv.get(["link", shortId]);
+
+    if (!data.value) {
+      return new Response("Invalid short link id", { status: 404 });
+    }
+
+    return new Response("", {
+      status: 308,
+      headers: {
+        location: data.value,
+      },
+    });
+  },
 };
